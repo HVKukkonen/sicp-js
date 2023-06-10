@@ -1,4 +1,10 @@
-// a.
+// Here we give two implementations for the function "product"
+// that calculates the product of a set of numbers
+// in range [a, b] with difference given by "next"
+
+// a. Iterative definition, i.e.,
+// the call stack doesn't expand
+// as we increase iterations
 const product = (term, a, next, b) => {
   const iter = (a, result) => (a > b)
     ? result
@@ -22,7 +28,8 @@ const pi = (accuracy) => {
 
 console.log('pi', pi(50))
 
-// b.
+// b. Recursive implementation where the intermediate values
+// get stored in the call stack 
 const recursiveProduct = (term, a, next, b, result) => {
   if (a > b) {
     return result
