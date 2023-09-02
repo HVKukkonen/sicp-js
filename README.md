@@ -1,4 +1,8 @@
 # sicpjs
+This repo consists of my solutions for the exercises in the book [Structure and Interpretation of Computer Programs — JavaScript Edition](https://sourceacademy.org/sicpjs/index). All solutions presented are written by me without assistance. I've read the book as personal development without attending any course.
+
+Please, note that the solutions presented are written (relaxedly) following the minimalistic style presented in the source material. 
+Thus, **the solutions should not be considered as representing my personal coding style or preferred notation**. 
 
 |Chapter|Solution         |Highlights
 |---    |---              |---
@@ -13,3 +17,4 @@
 |       |2.62             |Efficient union of ordered lists
 |2.4    |2.73
 |       |2.75             |Data abstraction by message passing 
+|3.1    |3.1, 3.2, 3.8
