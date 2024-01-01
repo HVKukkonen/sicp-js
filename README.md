@@ -22,5 +22,8 @@ Thus, **the solutions should not be considered as representing my personal codin
 |       |3.18, 3.19
 |       |3.33             |Defining a constraint-based system
 |3.4    |3.47             |Mutex for controlling concurrency
+|3.5    |3.50             |Optimisation of streams with memoization
+|       |3.54             |Infinite streams
+|       |3.64
 
 Interesting exercises for later: 3.3.3/4
