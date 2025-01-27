@@ -1,0 +1,88 @@
+@startuml enviroment model of evaluation
+!define ID label
+!define TEXT label
+
+frame "program environment" as global {
+  TEXT "function factorial(n) { return n===1 ? 1 : n*factorial(n-1) }"
+}
+
+ID "E1" as id1
+rectangle {
+  frame e1 {
+    TEXT "n: 6" as v1
+  }
+  TEXT "n => n===1 ? 1 : n*factorial(n-1)" as f1
+  TEXT "6*factorial(5)" as f1A
+}
+
+ID "E6" as id6
+rectangle {
+  frame e6 {
+    TEXT "n: 1" as v6
+  }
+  TEXT "n => n===1 ? 1 : n*factorial(n-1)" as f6
+  TEXT "1" as f6A
+}
+
+f1 -up- e1
+id1 -> e1
+e1 -up-> global
+f1A <-up- f1
+
+f6 -up- e6
+id6 -right-> e6
+e6 -up-> global
+f6A <-up- f6
+
+frame "program environment" as globalB {
+  TEXT "function factorial(n) { return fact_iter(1,1,n) }" as t1B
+  TEXT "function fact_iter(p,c,m) { return p > m ? p : fact_iter(p*c,c+1,m) }" as t2B
+}
+
+ID "E1" as id1B
+rectangle {
+  frame e1B {
+    TEXT "n: 6"
+  }
+  TEXT "n => fact_iter(1,1,n)" as f1B
+  TEXT "fact_iter(1,1,6)" as f1BB
+}
+
+ID "E2" as id2B
+rectangle {
+  frame e2B {
+    TEXT "p: 1"
+    TEXT "c: 1"
+    TEXT "m: 6"
+  }
+  TEXT "(p,c,m) => c>m ? p : fact_iter(p*c,c+1,m)" as f2B
+  TEXT "fact_iter(1,2,6)" as f2BB
+}
+
+ID "E6" as id6B
+rectangle {
+  frame e6B {
+    TEXT "p: 720"
+    TEXT "c: 7"
+    TEXT "m: 6" as E6V
+  }
+  TEXT "(p,c,m) => c>m ? p : fact_iter(p*c,c+1,m)" as f6B
+  TEXT "720" as f6BB
+}
+
+f1B -up- e1B
+id1B -> e1B
+e1B -up-> globalB
+f1BB <-up- f1B
+
+f2B -up- e2B
+id2B -> e2B
+e2B -up-> globalB
+f2BB <-up- f2B
+
+f6B -up- e6B
+id6B -right-> e6B
+e6B -up-> globalB
+f6BB <-up- f6B
+
+@enduml
