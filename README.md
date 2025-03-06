@@ -20,7 +20,7 @@ Thus, **the solutions should not be considered as representing my personal codin
 |3.1    |3.1, 3.2, 3.8
 |3.2    |3.9
 |3.3    |3.17             |Equality in imperative and functional programming
-|       |3.18, 3.19
+|       |3.18, 3.19, 3.24
 |       |3.33             |Defining a constraint-based system
 |3.4    |3.47             |Mutex for controlling concurrency
 |3.5    |3.50             |Optimisation of streams with memoization
