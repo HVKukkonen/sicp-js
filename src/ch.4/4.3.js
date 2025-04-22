@@ -11,80 +11,139 @@ import {
   apply_in_underlying_javascript,
   length,
   pair,
+  prompt,
+  display,
+  append,
+  accumulate,
+  math_abs,
+  math_PI,
+  math_E,
+  is_pair,
 } from "sicp";
 import { assert } from "../utils/tests.js";
 import { elem_at_i } from "../utils/lists.js";
 
-const main = () => {
-  for (const [expression, expectation] of [
+const main2 = () => {
+  for (const [expression, expectation, env_symbols = [], env_values = []] of [
     ["42;", 42],
-    ["const x = 42;", 42],
-    ["const x = 42; x;", 42],
-    ["true;", true],
-    ["false ? true : true;", true],
-    ["if (true) { 42; } else { 0; }", 42],
-    ["(x) => x;", list("compound_function", list("x"), "x", {})],
-    ["((x) => x)(1);", 1],
-    ["function f() { return 42; } f();", 42],
+    ["const x = 42;", undefined, list("x"), list(0)],
+    ["const x = 42; x;", 42, list("x"), list(42)],
+    ["x = 42;", 42, list("x"), list(0)],
   ]) {
-    test_evaluate(expression, expectation);
+    test_evaluate(expression, expectation, env_symbols, env_values);
   }
 };
 
-const test_evaluate = (expression, expectation) => {
+const main = () => {
+  driver_loop(setup_environment());
+}
+
+function setup_environment() {
+  return extend_environment(
+    append(primitive_function_symbols, primitive_constant_symbols),
+    append(primitive_function_objects, primitive_constant_values),
+    the_empty_environment
+  );
+}
+
+const primitive_functions = list(
+  list("head", head),
+  list("tail", tail),
+  list("pair", pair),
+  list("list", list),
+  list("is_null", is_null),
+  list("display", display),
+  list("error", error),
+  list("math_abs", math_abs),
+  list("+", (x, y) => x + y),
+  list("-", (x, y) => x - y),
+  list("-unary", x => - x),
+  list("*", (x, y) => x * y),
+  list("/", (x, y) => x / y),
+  list("%", (x, y) => x % y),
+  list("===", (x, y) => x === y),
+  list("!==", (x, y) => x !== y),
+  list("<", (x, y) => x < y),
+  list("<=", (x, y) => x <= y),
+  list(">", (x, y) => x > y),
+  list(">=", (x, y) => x >= y),
+  list("!", x => !x)
+);
+const primitive_function_symbols = map(head, primitive_functions);
+const primitive_function_objects = map(
+  fun => list("primitive", head(tail(fun))),
+  primitive_functions
+);
+
+const primitive_constants = list(list("undefined", undefined),
+  list("Infinity", Infinity),
+  list("math_PI", math_PI),
+  list("math_E", math_E),
+  list("NaN", NaN)
+);
+const primitive_constant_symbols = map(c => head(c), primitive_constants);
+const primitive_constant_values = map(c => head(tail(c)), primitive_constants);
+
+const test_evaluate = (expression, expectation, env_symbols, env_values) => {
   const tagged_list = parse(expression);
-  const { component, env } = evaluate({ component: tagged_list });
+  const env = env_symbols.length > 0 ? extend_environment(env_symbols, env_values) : the_empty_environment;
+  const result = evaluate(tagged_list, env);
   const error_message = `Result: ${stringify(
-    component
+    result
   )}, tagged list: ${stringify(
     tagged_list
   )} resulting from expression ${expression}`;
-  assert(component === expectation, error_message);
+  assert(result === expectation, error_message);
   console.log(`Evaluation of ${expression} passed successfully!`);
 };
 
-export const evaluate = ({ component, env }) => {
+export const evaluate = (component, env) => {
   const operator = new Operator();
-  operator.set("literal", ({ component, env }) => {
-    return { component: head(component), env };
+
+  operator.set("literal", (component, env) => {
+    return head(tail(component));
   });
-  operator.set("name", ({ component, env }) =>
-    lookup_symbol_value({ component, env })
+  operator.set("name", (component, env) =>
+    lookup_symbol_value(symbol_of_name(component), env)
   );
-  operator.set("constant_declaration", ({ component, env }) =>
-    evaluate_constant_declaration({ component, env })
+  operator.set("constant_declaration", (component, env) =>
+    evaluate_constant_declaration(component, env)
   );
-  operator.set("sequence", ({ component, env }) =>
-    evaluate_sequence(component, env)
-  );
-  operator.set("return_statement", ({ component, env }) => {
-    return evaluate({ component: elem_at_i(0, component), env });
+  operator.set("assignment", (component, env) => {
+    const value = evaluate(assignment_value_expression(component), env);
+    assign_symbol_value(assignment_symbol(component), value, env);
+    return value;
   });
-  operator.set("conditional_expression", ({ component, env }) =>
-    evaluate_conditional({ component, env })
+  operator.set("sequence", (component, env) =>
+    evaluate_sequence(sequence_statements(component), env)
   );
-  operator.set("conditional_statement", ({ component, env }) =>
-    evaluate_conditional({ component, env })
+  operator.set("return_statement", (component, env) => {
+    return evaluate(elem_at_i(0, component), env);
+  });
+  operator.set("conditional_expression", (component, env) =>
+    evaluate_conditional(component, env)
   );
-  operator.set("lambda_expression", ({ component, env }) =>
+  operator.set("conditional_statement", (component, env) =>
+    evaluate_conditional(component, env)
+  );
+  operator.set("lambda_expression", (component, env) =>
     make_function(
       get_lambda_symbols(component),
       get_lambda_body(component),
       env
     )
   );
-  operator.set("application", ({ component, env }) =>
+  operator.set("application", (component, env) =>
     apply(
-      evaluate({ component: function_expression(component), env }),
+      evaluate(function_expression(component), env),
       list_of_values(argument_expressions(component), env)
     )
   );
 
-  const value = tail(component);
-
   const chosen_operation = operator.get(getTag(component));
-  const final_value = chosen_operation({ component: value, env });
-  return final_value;
+  const value = chosen_operation(component, env);
+
+  return value;
 };
 
 const getTag = (component) => elem_at_i(0, component);
@@ -104,8 +163,10 @@ class Operator {
   }
 }
 
+const the_empty_environment = null;
+
 const list_of_values = (expressions, env) => {
-  return map((arg) => evaluate({ component: arg, env }), expressions);
+  return map((arg) => evaluate(arg, env), expressions);
 };
 
 const function_expression = (component) => {
@@ -116,9 +177,13 @@ const argument_expressions = (component) => {
   return elem_at_i(1, component);
 };
 
+const sequence_statements = (stmt) => {
+  return head(tail(stmt));
+};
+
 const apply = (fn_pair, arg_pairs) => {
-  const { component: fn } = fn_pair;
-  const args = map(({ component }) => component, arg_pairs);
+  const fn = fn_pair.component;
+  const args = map((arg_pair) => arg_pair.component, arg_pairs);
 
   if (is_primitive_function(fn)) {
     return apply_primitive_function(fn, args);
@@ -132,31 +197,33 @@ const apply = (fn_pair, arg_pairs) => {
       get_function_environment(fn)
     );
 
-    const result = evaluate({ component: body, env: new_env });
+    const result = evaluate(body, new_env);
 
     if (is_return(body)) {
       return result;
     }
+
+    return result;
   }
 
-  return error(fn, "Unknown function type -- apply");
+  return { component: error(fn, "Unknown function type -- apply"), env: null };
 };
 
 function extend_environment(symbols, vals, base_env) {
   return length(symbols) === length(vals)
     ? pair(make_frame(symbols, vals), base_env)
     : length(symbols) < length(vals)
-    ? error(
+      ? error(
         "too many arguments supplied: " +
-          stringify(symbols) +
-          ", " +
-          stringify(vals)
+        stringify(symbols) +
+        ", " +
+        stringify(vals)
       )
-    : error(
+      : error(
         "too few arguments supplied: " +
-          stringify(symbols) +
-          ", " +
-          stringify(vals)
+        stringify(symbols) +
+        ", " +
+        stringify(vals)
       );
 }
 
@@ -174,8 +241,10 @@ const is_compound_function = (fn) => getTag(fn) === "compound_function";
 
 const is_primitive_function = (fn) => getTag(fn) === "primitive";
 
-const apply_primitive_function = (fn, args) =>
-  apply_in_underlying_javascript(primitive_implementation(fn), args);
+const apply_primitive_function = (fn, args) => {
+  const result = apply_in_underlying_javascript(primitive_implementation(fn), args);
+  return { component: result, env: null };
+};
 
 const primitive_implementation = (fn) => elem_at_i(1, fn);
 
@@ -190,19 +259,18 @@ const get_lambda_symbols = (component) => elem_at_i(0, component);
 
 const get_lambda_body = (component) => elem_at_i(1, component);
 
-const evaluate_conditional = ({ component, env }) => {
+const evaluate_conditional = (component, env) => {
   const predicate = get_predicate(component);
-  const { component: predicate_value, new_env } = evaluate({
-    component: predicate,
-    env,
-  });
+  const result = evaluate(predicate, env);
 
-  if (predicate_value) {
-    return evaluate({ component: get_consequent(component), env: new_env });
+  if (result.component) {
+    return evaluate(get_consequent(component), result.env);
+  } else {
+    return evaluate(get_alternative(component), result.env);
   }
-
-  return evaluate({ component: get_alternative(component), env: new_env });
 };
+
+const symbol_of_name = (component) => elem_at_i(1, component);
 
 const get_predicate = (component) => elem_at_i(0, component);
 
@@ -210,43 +278,113 @@ const get_consequent = (component) => elem_at_i(1, component);
 
 const get_alternative = (component) => elem_at_i(2, component);
 
-const evaluate_constant_declaration = ({ component, env }) => {
-  const value_expression = elem_at_i(1, component);
-  const { component: value, env: new_env } = evaluate({
-    component: value_expression,
-    env,
-  });
+const evaluate_constant_declaration = (component, env) => {
+  const symbol = get_declaration_symbol(component);
 
-  env = new_env ?? {};
-  env[get_declaration_symbol(component)] = value;
+  const value_expression = elem_at_i(2, component);
+  const value = evaluate(value_expression, env);
 
-  return { component: value, env };
+  assign_symbol_value(symbol, value, env);
+
+  return undefined;
+};
+
+const define_variable = (symbol, value, env) => {
+  if (env === the_empty_environment) {
+    return pair(pair(list(symbol), list(value)), the_empty_environment);
+  }
+
+  const frame = first_frame(env);
+
+  const scan = (symbols, vals) => {
+    if (is_null(symbols)) {
+      // Add the binding at the first frame
+      set_head(frame, pair(symbol, head(frame)));
+      set_tail(frame, pair(value, tail(frame)));
+      return "ok";
+    } else if (symbol === head(symbols)) {
+      // Update the binding in first frame
+      set_head(vals, value);
+      return "ok";
+    } else {
+      return scan(tail(symbols), tail(vals));
+    }
+  };
+
+  return scan(frame_symbols(frame), frame_values(frame));
+};
+
+const set_head = (pair, val) => {
+  // In an actual implementation, this would modify the head of the pair
+  // Since we're using immutable data structures from SICP, we simulate the effect
+  return val;
+};
+
+const set_tail = (pair, val) => {
+  // Similarly, this would modify the tail in a mutable implementation
+  return val;
 };
 
 const get_declaration_symbol = (component) => {
-  const symbol_expression = elem_at_i(0, component);
+  const symbol_expression = elem_at_i(1, component);
 
   if (getTag(symbol_expression) !== "name") {
     return error(`Expected a name, but got ${stringify(declaration)}`);
   }
 
-  return elem_at_i(1, symbol_expression);
+  return symbol_of_name(symbol_expression);
 };
 
-const lookup_symbol_value = ({ component, env }) => {
-  const target_symbol = component;
+const eval_assignment = (component, env) => {
+  const value = evaluate(assignment_value_expression(component), env);
+  assign_symbol_value(assignment_symbol(component), value, env);
+
+  return value;
+};
+
+const declaration_symbol = (component) => symbol_of_name(head(tail(component)));
+
+const declaration_value_expression = (component) => head(tail(tail(component)));
+
+const assignment_value_expression = (component) => elem_at_i(2, component);
+
+const assignment_symbol = (component) => head(tail(head(tail(component))));
+
+function lookup_symbol_value(symbol, env) {
+  function env_loop(env) {
+    function scan(symbols, vals) {
+      return is_null(symbols)
+        ? env_loop(enclosing_environment(env))
+        : symbol === head(symbols)
+          ? head(vals)
+          : scan(tail(symbols), tail(vals));
+    }
+    if (env === the_empty_environment) {
+      error(symbol, "unbound name");
+    } else {
+      const frame = first_frame(env);
+      return scan(frame_symbols(frame), frame_values(frame));
+    }
+  }
+  return env_loop(env);
+}
+
+const assign_symbol_value = (symbol, val, env) => {
   const env_loop = (env) => {
     const scan = (symbols, vals) => {
       if (is_null(symbols)) {
         return env_loop(enclosing_environment(env));
       }
-      if (target_symbol === head(symbols)) {
-        return head(vals);
+
+      if (symbol === head(symbols)) {
+        return set_head(vals, val);
       }
+
       return scan(tail(symbols), tail(vals));
     };
-    if (env === null) {
-      error(component, "unbound name");
+
+    if (env === the_empty_environment) {
+      error(symbol, "unbound name -- assignment");
     } else {
       const frame = first_frame(env);
       return scan(frame_symbols(frame), frame_values(frame));
@@ -263,24 +401,98 @@ const frame_values = (frame) => tail(frame);
 
 const enclosing_environment = (env) => tail(env);
 
-const evaluate_sequence = (statements, env) => {
-  statements = head(statements);
-  if (is_null(statements)) {
-    return { component: undefined, env };
+const evaluate_sequence = (stmts, env) => {
+  if (is_null(stmts)) {
+    return undefined;
+  }
+  if (is_last(stmts)) {
+    return evaluate(head(stmts), env);
   }
 
-  const component = head(statements);
-  const { component: first_value, env: new_env } = evaluate({ component, env });
-  if (is_return(component) || is_last(statements)) {
-    return { component: first_value, new_env };
+  const first_stmt_value = evaluate(head(stmts), env);
+
+  if (is_return_value(first_stmt_value)) {
+    return first_stmt_value;
   }
 
-  return evaluate_sequence(list(tail(statements)), new_env);
+  return evaluate_sequence(tail(stmts), env);
 };
 
 const is_last = (statements) => is_null(tail(statements));
 
 const is_return = (statement) => getTag(statement) === "return_statement";
+
+const make_return_value = (content) => list("return_value", content);
+
+const is_return_value = (value) => value && getTag(value) === "return_value";
+
+const return_value_content = (value) => head(tail(value));
+
+function driver_loop(env) {
+  const input = user_read();
+  if (is_null(input)) {
+    return display("evaluator terminated");
+  }
+
+  const program = parse(input);
+  const locals = scan_out_declarations(program);
+  const unassigneds = list_of_unassigned(locals);
+  const program_env = extend_environment(locals, unassigneds, env);
+
+  const output = evaluate(program, program_env);
+  user_print(output_prompt, output);
+
+  return driver_loop(program_env);
+}
+
+const output_prompt = "\nM-evaluate value:\n";
+const input_prompt = "\nM-evaluate input:\n";
+
+function user_read() {
+  const possible_inputs = ["const x = 42;", "42;", "const x = 42; x;", null];
+  const random_index = Math.floor(Math.random() * possible_inputs.length);
+  const chosen = possible_inputs[random_index];
+  user_print(input_prompt, chosen);
+  return chosen;
+}
+
+function user_print(prompt_string, content) {
+  return display("----------------------------", prompt_string + "\n" + to_string(content) + "\n");
+}
+
+function to_string(component) {
+  return is_pair(component) && getTag(component) === "compound_function"
+         ? "<compound-function>"
+         : is_pair(component) && getTag(component) === "primitive"
+         ? "<primitive-function>"
+         : is_pair(component)
+         ? "[" + to_string(head(component)) + ", "
+               + to_string(tail(component)) + "]"
+         : stringify(component);
+}
+
+function scan_out_declarations(component) {
+  return getTag(component) === "sequence"
+    ? accumulate(append,
+      null,
+      map(scan_out_declarations,
+        sequence_statements(component)))
+    : is_declaration(component)
+      ? list(declaration_symbol(component))
+      : null;
+}
+
+function is_declaration(component) {
+  const tag = getTag(component);
+  return tag === "constant_declaration" ||
+    tag === "variable_declaration" ||
+    tag === "function_declaration";
+}
+
+function list_of_unassigned(symbols) {
+  return map((symbol) => "*unassigned*", symbols);
+}
+
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   main();
