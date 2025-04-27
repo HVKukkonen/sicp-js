@@ -19,6 +19,7 @@ import {
   math_PI,
   math_E,
   is_pair,
+  list_ref,
 } from "sicp";
 import { assert } from "../utils/tests.js";
 import { elem_at_i } from "../utils/lists.js";
@@ -35,7 +36,7 @@ const main2 = () => {
 };
 
 const main = () => {
-  driver_loop(setup_environment());
+  create_driver(list("const x = 42;", "42;", "const x = 42; x;"))(setup_environment());
 }
 
 function setup_environment() {
@@ -98,6 +99,14 @@ const test_evaluate = (expression, expectation, env_symbols, env_values) => {
 };
 
 export const evaluate = (component, env) => {
+  const operator = create_operator();
+  const chosen_operation = operator.get(getTag(component));
+  const value = chosen_operation(component, env);
+
+  return value;
+};
+
+const create_operator = () => {
   const operator = new Operator();
 
   operator.set("literal", (component, env) => {
@@ -140,10 +149,7 @@ export const evaluate = (component, env) => {
     )
   );
 
-  const chosen_operation = operator.get(getTag(component));
-  const value = chosen_operation(component, env);
-
-  return value;
+  return operator;
 };
 
 const getTag = (component) => elem_at_i(0, component);
@@ -428,33 +434,44 @@ const is_return_value = (value) => value && getTag(value) === "return_value";
 
 const return_value_content = (value) => head(tail(value));
 
-function driver_loop(env) {
-  const input = user_read();
-  if (is_null(input)) {
-    return display("evaluator terminated");
+const create_driver = (user_input) => {
+  const input_generator = make_input_generator(append(user_input, list(null)));
+  function driver_loop(env) {
+    const input = user_read(input_generator);
+    if (is_null(input)) {
+      return display("evaluator terminated");
+    }
+  
+    const program = parse(input);
+    const locals = scan_out_declarations(program);
+    const unassigneds = list_of_unassigned(locals);
+    const program_env = extend_environment(locals, unassigneds, env);
+  
+    const output = evaluate(program, program_env);
+    user_print(output_prompt, output);
+  
+    return driver_loop(program_env);
   }
 
-  const program = parse(input);
-  const locals = scan_out_declarations(program);
-  const unassigneds = list_of_unassigned(locals);
-  const program_env = extend_environment(locals, unassigneds, env);
-
-  const output = evaluate(program, program_env);
-  user_print(output_prompt, output);
-
-  return driver_loop(program_env);
+  return driver_loop;
 }
 
 const output_prompt = "\nM-evaluate value:\n";
 const input_prompt = "\nM-evaluate input:\n";
 
-function user_read() {
-  const possible_inputs = ["const x = 42;", "42;", "const x = 42; x;", null];
-  const random_index = Math.floor(Math.random() * possible_inputs.length);
-  const chosen = possible_inputs[random_index];
+function* make_input_generator(user_input) {
+  let index = 0;
+  
+  while (true) {
+    yield list_ref(user_input, index++);
+  }
+}
+
+const user_read = (input_generator) => {
+  const chosen = input_generator.next().value;
   user_print(input_prompt, chosen);
   return chosen;
-}
+};
 
 function user_print(prompt_string, content) {
   return display("----------------------------", prompt_string + "\n" + to_string(content) + "\n");
