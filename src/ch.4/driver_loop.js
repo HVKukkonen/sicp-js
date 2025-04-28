@@ -112,8 +112,9 @@ function is_declaration(component) {
     tag === "function_declaration";
 }
 
+export const unassigned = "*unassigned*";
 function list_of_unassigned(symbols) {
-  return map((symbol) => "*unassigned*", symbols);
+  return map((symbol) => unassigned, symbols);
 }
 
 function* make_input_generator(user_input) {

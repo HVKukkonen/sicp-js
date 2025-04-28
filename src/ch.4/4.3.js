@@ -10,14 +10,24 @@ import {
   pair,
   set_head,
   set_tail,
+  is_boolean,
+  list_ref,
 } from "sicp";
 import { elem_at_i } from "../utils/lists.js";
 import { create_driver, setup_environment } from "./driver_loop.js";
 import { getTag, declaration_symbol, extend_environment, sequence_statements, symbol_of_name } from "./eval_utils.js";
 
 const main = () => {
-  const expectation = list(undefined, 42);
-  const driver = create_driver(list("const x = 42;", "42;"), evaluate, expectation);
+  const input = list(
+    "const x = 42;",
+    "42;",
+    "const x = 42; x;",
+    "let x = 42; x;",
+    "(true) ? 1 : 0;",
+    "const f = x => x; f(42);"
+  );
+  const expectation = list(undefined, 42, 42, 42, 1, 42);
+  const driver = create_driver(input, evaluate, expectation);
   driver(setup_environment(), list());
 }
 
@@ -39,7 +49,10 @@ const create_operator = () => {
     lookup_symbol_value(symbol_of_name(component), env)
   );
   operator.set("constant_declaration", (component, env) =>
-    evaluate_constant_declaration(component, env)
+    evaluate_declaration(component, env)
+  );
+  operator.set("variable_declaration", (component, env) =>
+    evaluate_declaration(component, env)
   );
   operator.set("assignment", (component, env) => {
     const value = evaluate(assignment_value_expression(component), env);
@@ -50,7 +63,7 @@ const create_operator = () => {
     evaluate_sequence(sequence_statements(component), env)
   );
   operator.set("return_statement", (component, env) => {
-    return evaluate(elem_at_i(0, component), env);
+    return eval_return_statement(component, env);
   });
   operator.set("conditional_expression", (component, env) =>
     evaluate_conditional(component, env)
@@ -97,17 +110,22 @@ const list_of_values = (expressions, env) => {
 };
 
 const function_expression = (component) => {
-  return elem_at_i(0, component);
-};
-
-const argument_expressions = (component) => {
   return elem_at_i(1, component);
 };
 
-const apply = (fn_pair, arg_pairs) => {
-  const fn = fn_pair.component;
-  const args = map((arg_pair) => arg_pair.component, arg_pairs);
+const argument_expressions = (component) => {
+  return elem_at_i(2, component);
+};
 
+const eval_return_statement = (component, env) => {
+  return make_return_value(evaluate(return_expression(component), env));
+}
+
+const return_expression = (component) => {
+  return elem_at_i(1, component);
+}
+
+const apply = (fn, args) => {
   if (is_primitive_function(fn)) {
     return apply_primitive_function(fn, args);
   }
@@ -122,62 +140,62 @@ const apply = (fn_pair, arg_pairs) => {
 
     const result = evaluate(body, new_env);
 
-    if (is_return(body)) {
-      return result;
+    if (is_return(result)) {
+      return elem_at_i(1, result);
     }
 
-    return result;
+    return undefined;
   }
 
-  return { component: error(fn, "Unknown function type -- apply"), env: null };
+  return error(fn, "Unknown function type -- apply");
 };
 
-const get_function_parameters = (fn) => elem_at_i(1, fn);
+const get_function_parameters = (fn) => list_ref(fn, 1);
 
-const get_function_body = (fn) => elem_at_i(2, fn);
+const get_function_body = (fn) => list_ref(fn, 2);
 
-const get_function_environment = (fn) => elem_at_i(3, fn);
+const get_function_environment = (fn) => list_ref(fn, 3);
 
 const is_compound_function = (fn) => getTag(fn) === "compound_function";
 
 const is_primitive_function = (fn) => getTag(fn) === "primitive";
 
-const apply_primitive_function = (fn, args) => {
-  const result = apply_in_underlying_javascript(primitive_implementation(fn), args);
-  return { component: result, env: null };
-};
+const apply_primitive_function = (fn, args) => apply_in_underlying_javascript(
+  primitive_implementation(fn), args
+);
 
 const primitive_implementation = (fn) => elem_at_i(1, fn);
 
-const make_function = (parameters, body, env) => {
-  return {
-    component: list("compound_function", parameters, body, env),
-    env,
-  };
-};
+const make_function = (parameters, body, env) => list("compound_function", parameters, body, env);
 
-const get_lambda_symbols = (component) => elem_at_i(0, component);
+const get_lambda_symbols = (component) => map(symbol_of_name, elem_at_i(1, component));
 
-const get_lambda_body = (component) => elem_at_i(1, component);
+const get_lambda_body = (component) => elem_at_i(2, component);
 
 const evaluate_conditional = (component, env) => {
   const predicate = get_predicate(component);
   const result = evaluate(predicate, env);
 
-  if (result.component) {
-    return evaluate(get_consequent(component), result.env);
-  } else {
-    return evaluate(get_alternative(component), result.env);
+  if (is_truthy(result)) {
+    return evaluate(get_consequent(component), env);
   }
+
+  return evaluate(get_alternative(component), env);
 };
 
-const get_predicate = (component) => elem_at_i(0, component);
+const get_predicate = (component) => list_ref(component, 1);
 
-const get_consequent = (component) => elem_at_i(1, component);
+const get_consequent = (component) => list_ref(component, 2);
 
-const get_alternative = (component) => elem_at_i(2, component);
+const get_alternative = (component) => list_ref(component, 3);
 
-const evaluate_constant_declaration = (component, env) => {
+function is_truthy(x) {
+  return is_boolean(x)
+    ? x
+    : error(x, "boolean expected, received");
+}
+
+const evaluate_declaration = (component, env) => {
   const symbol = declaration_symbol(component);
 
   const value_expression = elem_at_i(2, component);
@@ -297,7 +315,7 @@ const evaluate_sequence = (stmts, env) => {
 
 const is_last = (statements) => is_null(tail(statements));
 
-const is_return = (statement) => getTag(statement) === "return_statement";
+const is_return = (statement) => getTag(statement) === "return_statement" || getTag(statement) === "return_value";
 
 const make_return_value = (content) => list("return_value", content);
 
