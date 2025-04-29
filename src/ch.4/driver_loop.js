@@ -1,5 +1,5 @@
 import { head, length, tail, pair, error, math_abs, math_PI, math_E, parse, is_null, display, append, stringify, map, accumulate, list_ref, is_pair, list } from "sicp";
-import { extend_environment, getTag, sequence_statements, declaration_symbol } from "./eval_utils.js";
+import { extend_environment, getTag, scan_out_declarations, list_of_unassigned } from "./eval_utils.js";
 import { assert } from "../utils/tests.js";
 
 export const create_driver = (user_input, evaluate, expectation) => {
@@ -14,7 +14,7 @@ export const create_driver = (user_input, evaluate, expectation) => {
       return accumulative_output;
     }
 
-    const { output, new_env } = execute(input, env, evaluate);
+    const { output, env: new_env } = execute(input, env, evaluate);
     user_print(output_prompt, output);
     
     return driver_loop(new_env, append(accumulative_output, list(output)));
@@ -93,29 +93,6 @@ const primitive_constants = list(list("undefined", undefined),
 );
 const primitive_constant_symbols = map(c => head(c), primitive_constants);
 const primitive_constant_values = map(c => head(tail(c)), primitive_constants);
-
-function scan_out_declarations(component) {
-  return getTag(component) === "sequence"
-    ? accumulate(append,
-      null,
-      map(scan_out_declarations,
-        sequence_statements(component)))
-    : is_declaration(component)
-      ? list(declaration_symbol(component))
-      : null;
-}
-
-function is_declaration(component) {
-  const tag = getTag(component);
-  return tag === "constant_declaration" ||
-    tag === "variable_declaration" ||
-    tag === "function_declaration";
-}
-
-export const unassigned = "*unassigned*";
-function list_of_unassigned(symbols) {
-  return map((symbol) => unassigned, symbols);
-}
 
 function* make_input_generator(user_input) {
   let index = 0;

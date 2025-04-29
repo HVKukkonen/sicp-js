@@ -27,6 +27,8 @@ Thus, **the solutions should not be considered as representing my personal codin
 |3.5    |3.50                     |Optimisation of streams with memoization
 |       |3.54                     |Infinite streams
 |       |3.64
-|4.1    |4.2, 4.3, 4.4
+|4.1    |4.2
+|       |4.3                      |Evaluator for JS written in JS
+|       |4.4
 
 [**Internal note**] Interesting exercises for later: 3.3.4

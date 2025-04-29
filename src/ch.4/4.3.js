@@ -1,4 +1,3 @@
-// NOTE: This is a partial implementation of the evaluator. The missing features would follow the same pattern as the ones implemented here.
 import {
   head,
   tail,
@@ -7,26 +6,28 @@ import {
   is_null,
   map,
   apply_in_underlying_javascript,
-  pair,
   set_head,
-  set_tail,
   is_boolean,
   list_ref,
 } from "sicp";
-import { elem_at_i } from "../utils/lists.js";
 import { create_driver, setup_environment } from "./driver_loop.js";
-import { getTag, declaration_symbol, extend_environment, sequence_statements, symbol_of_name } from "./eval_utils.js";
+import { getTag, declaration_symbol, extend_environment, sequence_statements, symbol_of_name, scan_out_declarations, list_of_unassigned } from "./eval_utils.js";
 
 const main = () => {
   const input = list(
     "const x = 42;",
-    "42;",
-    "const x = 42; x;",
-    "let x = 42; x;",
-    "(true) ? 1 : 0;",
-    "const f = x => x; f(42);"
+    "1;",
+    "const x = 2; x;",
+    "let x = 3; x;",
+    "(true) ? 4 : 0;",
+    "if (true) { 5; }",
+    "const f = x => x; f(6);",
+    "const f = () => { const x = 7; return x; }; f();",
+    "function f() { return 42; }",
+    "!false;",
+    "f();"
   );
-  const expectation = list(undefined, 42, 42, 42, 1, 42);
+  const expectation = list(undefined, 1, 2, 3, 4, 5, 6, 7, undefined, true, 42);
   const driver = create_driver(input, evaluate, expectation);
   driver(setup_environment(), list());
 }
@@ -63,7 +64,7 @@ const create_operator = () => {
     evaluate_sequence(sequence_statements(component), env)
   );
   operator.set("return_statement", (component, env) => {
-    return eval_return_statement(component, env);
+    return evaluate_return(component, env);
   });
   operator.set("conditional_expression", (component, env) =>
     evaluate_conditional(component, env)
@@ -84,6 +85,18 @@ const create_operator = () => {
       list_of_values(argument_expressions(component), env)
     )
   );
+  operator.set("block", (component, env) => {
+    return evaluate_block(component, env);
+  });
+  operator.set("function_declaration", (component, env) => {
+    return evaluate(function_decl_to_constant_decl(component), env);
+  });
+  operator.set("unary_operator_combination", (component, env) => {
+    return evaluate(unary_operator_combination_to_application(component), env);
+  });
+  operator.set("binary_operator_combination", (component, env) => {
+    return evaluate(binary_operator_combination_to_application(component), env);
+  });
 
   return operator;
 };
@@ -105,43 +118,87 @@ class Operator {
 
 const the_empty_environment = null;
 
+const unary_operator_combination_to_application = (component) => {
+  const operator = list_ref(component, 1);
+
+  return make_application(make_name(operator), list(first_operand(component)));
+}
+
+const binary_operator_combination_to_application = (component) => {
+  const operator = list_ref(component, 1);
+
+  return make_application(
+    make_name(operator),
+    list(first_operand(component), second_operand(component))
+  );
+}
+
+const first_operand = (component) => list_ref(component, 2);
+
+const second_operand = (component) => list_ref(component, 3);
+
+const make_application = (function_expression, argument_expressions) => list("application", function_expression, argument_expressions)
+
+const make_name = (symbol) => list("name", symbol);
+
+const function_decl_to_constant_decl = (component) => {
+  const declaration_name = list_ref(component, 1);
+  const parameters = list_ref(component, 2);
+  const body = list_ref(component, 3);
+
+  return make_constant_declaration(
+    declaration_name,
+    make_lambda_expression(
+      parameters,
+      body
+    )
+  );
+}
+
+const make_constant_declaration = (name, value_expression) => {
+  return list("constant_declaration", name, value_expression);
+}
+
+const make_lambda_expression = (parameters, body) => {
+  return list("lambda_expression", parameters, body);
+}
+
+const evaluate_block = (component, env) => {
+  const body = list_ref(component, 1);
+  const locals = scan_out_declarations(body);
+  const unassigneds = list_of_unassigned(locals);
+  return evaluate(body, extend_environment(locals, unassigneds, env));
+}
+
 const list_of_values = (expressions, env) => {
   return map((arg) => evaluate(arg, env), expressions);
 };
 
-const function_expression = (component) => {
-  return elem_at_i(1, component);
-};
+const function_expression = (component) => list_ref(component, 1);
 
-const argument_expressions = (component) => {
-  return elem_at_i(2, component);
-};
+const argument_expressions = (component) => list_ref(component, 2);
 
-const eval_return_statement = (component, env) => {
-  return make_return_value(evaluate(return_expression(component), env));
-}
-
-const return_expression = (component) => {
-  return elem_at_i(1, component);
-}
+const evaluate_return = (component, env) => make_return_value(
+  evaluate(list_ref(component, 1), env)
+);
 
 const apply = (fn, args) => {
-  if (is_primitive_function(fn)) {
+  if (getTag(fn) === "primitive") {
     return apply_primitive_function(fn, args);
   }
 
-  if (is_compound_function(fn)) {
-    const body = get_function_body(fn);
+  if (getTag(fn) === "compound_function") {
+    const body = list_ref(fn, 2);
     const new_env = extend_environment(
-      get_function_parameters(fn),
+      function_parameters(fn),
       args,
-      get_function_environment(fn)
+      function_environment(fn)
     );
 
     const result = evaluate(body, new_env);
 
     if (is_return(result)) {
-      return elem_at_i(1, result);
+      return list_ref(result, 1);
     }
 
     return undefined;
@@ -150,55 +207,47 @@ const apply = (fn, args) => {
   return error(fn, "Unknown function type -- apply");
 };
 
-const get_function_parameters = (fn) => list_ref(fn, 1);
+const function_parameters = (fn) => list_ref(fn, 1);
 
-const get_function_body = (fn) => list_ref(fn, 2);
-
-const get_function_environment = (fn) => list_ref(fn, 3);
-
-const is_compound_function = (fn) => getTag(fn) === "compound_function";
-
-const is_primitive_function = (fn) => getTag(fn) === "primitive";
+const function_environment = (fn) => list_ref(fn, 3);
 
 const apply_primitive_function = (fn, args) => apply_in_underlying_javascript(
-  primitive_implementation(fn), args
+  list_ref(fn, 1), args
 );
-
-const primitive_implementation = (fn) => elem_at_i(1, fn);
 
 const make_function = (parameters, body, env) => list("compound_function", parameters, body, env);
 
-const get_lambda_symbols = (component) => map(symbol_of_name, elem_at_i(1, component));
+const get_lambda_symbols = (component) => map(symbol_of_name, list_ref(component, 1));
 
-const get_lambda_body = (component) => elem_at_i(2, component);
+const get_lambda_body = (component) => list_ref(component, 2);
 
 const evaluate_conditional = (component, env) => {
-  const predicate = get_predicate(component);
+  const predicate = list_ref(component, 1);
   const result = evaluate(predicate, env);
 
   if (is_truthy(result)) {
-    return evaluate(get_consequent(component), env);
+    return evaluate(consequent(component), env);
   }
 
-  return evaluate(get_alternative(component), env);
+  return evaluate(alternative(component), env);
 };
 
-const get_predicate = (component) => list_ref(component, 1);
+const consequent = (component) => list_ref(component, 2);
 
-const get_consequent = (component) => list_ref(component, 2);
+const alternative = (component) => list_ref(component, 3);
 
-const get_alternative = (component) => list_ref(component, 3);
+const is_truthy = (x) => {
+  if (!is_boolean(x)) {
+    return error(x, "boolean expected, received");
+  }
 
-function is_truthy(x) {
-  return is_boolean(x)
-    ? x
-    : error(x, "boolean expected, received");
+  return x;
 }
 
 const evaluate_declaration = (component, env) => {
   const symbol = declaration_symbol(component);
 
-  const value_expression = elem_at_i(2, component);
+  const value_expression = list_ref(component, 2);
   const value = evaluate(value_expression, env);
 
   assign_symbol_value(symbol, value, env);
@@ -206,61 +255,32 @@ const evaluate_declaration = (component, env) => {
   return undefined;
 };
 
-const define_variable = (symbol, value, env) => {
-  if (env === the_empty_environment) {
-    return pair(pair(list(symbol), list(value)), the_empty_environment);
-  }
+const assignment_value_expression = (component) => list_ref(component, 2);
 
-  const frame = first_frame(env);
+const assignment_symbol = (component) => list_ref(list_ref(component, 1), 1);
 
-  const scan = (symbols, vals) => {
-    if (is_null(symbols)) {
-      // Add the binding at the first frame
-      set_head(frame, pair(symbol, head(frame)));
-      set_tail(frame, pair(value, tail(frame)));
-      return "ok";
-    } else if (symbol === head(symbols)) {
-      // Update the binding in first frame
-      set_head(vals, value);
-      return "ok";
-    } else {
+const lookup_symbol_value = (symbol, env) => {
+  const env_loop = (env) => {
+    const scan = (symbols, vals) => {
+      if (is_null(symbols)) {
+        return env_loop(tail(env));
+      }
+
+      if (symbol === head(symbols)) {
+        return head(vals);
+      }
+
       return scan(tail(symbols), tail(vals));
     }
-  };
 
-  return scan(frame_symbols(frame), frame_values(frame));
-};
-
-const eval_assignment = (component, env) => {
-  const value = evaluate(assignment_value_expression(component), env);
-  assign_symbol_value(assignment_symbol(component), value, env);
-
-  return value;
-};
-
-
-const declaration_value_expression = (component) => head(tail(tail(component)));
-
-const assignment_value_expression = (component) => elem_at_i(2, component);
-
-const assignment_symbol = (component) => head(tail(head(tail(component))));
-
-function lookup_symbol_value(symbol, env) {
-  function env_loop(env) {
-    function scan(symbols, vals) {
-      return is_null(symbols)
-        ? env_loop(enclosing_environment(env))
-        : symbol === head(symbols)
-          ? head(vals)
-          : scan(tail(symbols), tail(vals));
-    }
     if (env === the_empty_environment) {
-      error(symbol, "unbound name");
-    } else {
-      const frame = first_frame(env);
-      return scan(frame_symbols(frame), frame_values(frame));
+      return error(symbol, "unbound name");
     }
+
+    const frame = head(env);
+    return scan(frame_symbols(frame), frame_values(frame));
   }
+
   return env_loop(env);
 }
 
@@ -268,7 +288,7 @@ const assign_symbol_value = (symbol, val, env) => {
   const env_loop = (env) => {
     const scan = (symbols, vals) => {
       if (is_null(symbols)) {
-        return env_loop(enclosing_environment(env));
+        return env_loop(tail(env));
       }
 
       if (symbol === head(symbols)) {
@@ -279,22 +299,19 @@ const assign_symbol_value = (symbol, val, env) => {
     };
 
     if (env === the_empty_environment) {
-      error(symbol, "unbound name -- assignment");
-    } else {
-      const frame = first_frame(env);
-      return scan(frame_symbols(frame), frame_values(frame));
+      return error(symbol, "unbound name -- assignment");
     }
+
+    const frame = head(env);
+    return scan(frame_symbols(frame), frame_values(frame));
   };
+
   return env_loop(env);
 };
-
-const first_frame = (env) => head(env);
 
 const frame_symbols = (frame) => head(frame);
 
 const frame_values = (frame) => tail(frame);
-
-const enclosing_environment = (env) => tail(env);
 
 const evaluate_sequence = (stmts, env) => {
   if (is_null(stmts)) {
@@ -315,14 +332,11 @@ const evaluate_sequence = (stmts, env) => {
 
 const is_last = (statements) => is_null(tail(statements));
 
-const is_return = (statement) => getTag(statement) === "return_statement" || getTag(statement) === "return_value";
+const is_return = (statement) => getTag(statement) === "return_statement" || is_return_value(statement);
 
 const make_return_value = (content) => list("return_value", content);
 
 const is_return_value = (value) => value && getTag(value) === "return_value";
-
-const return_value_content = (value) => head(tail(value));
-
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   main();

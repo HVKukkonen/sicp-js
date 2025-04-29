@@ -1,4 +1,4 @@
-import { error, stringify, length, pair, head, tail } from "sicp";
+import { error, stringify, length, pair, head, tail, map, append, list, accumulate } from "sicp";
 import { elem_at_i } from "../utils/lists.js";
 
 export function extend_environment(symbols, vals, base_env) {
@@ -19,7 +19,30 @@ export function extend_environment(symbols, vals, base_env) {
       );
 }
 
-function make_frame(symbols, values) {
+export const scan_out_declarations = (component) => {
+  return getTag(component) === "sequence"
+    ? accumulate(append,
+      null,
+      map(scan_out_declarations,
+        sequence_statements(component)))
+    : is_declaration(component)
+      ? list(declaration_symbol(component))
+      : null;
+}
+
+const is_declaration = (component) => {
+  const tag = getTag(component);
+  return tag === "constant_declaration" ||
+    tag === "variable_declaration" ||
+    tag === "function_declaration";
+}
+
+export const unassigned = "*unassigned*";
+export const list_of_unassigned = (symbols) => {
+  return map((symbol) => unassigned, symbols);
+}
+
+const make_frame = (symbols, values) => {
   return pair(symbols, values);
 }
 
