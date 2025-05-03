@@ -66,7 +66,7 @@ const unparse_element = (tagged_list) =>
     (() => display_list(tagged_list, "\ncould not identify:"))
   )(tail(tagged_list));
 
-const unparse = (component) => {
+export const unparse = (component) => {
   if (!is_pair(component)) {
     return "";
   }
@@ -77,7 +77,7 @@ const unparse = (component) => {
   return unparse(head(component)) + unparse(tail(component));
 };
 
-(() => {
+const main = () => {
   const display_unparse = (notation) => {
     display(notation, "input to parse-unparse:");
     display(unparse(parse(notation)), "result:");
@@ -106,4 +106,8 @@ const unparse = (component) => {
   ]) {
     display_unparse(notation);
   }
-})();
+}
+
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main();
+}

@@ -2,7 +2,7 @@ import { head, length, tail, pair, error, math_abs, math_PI, math_E, parse, is_n
 import { extend_environment, getTag, scan_out_declarations, list_of_unassigned } from "./eval_utils.js";
 import { assert } from "../utils/tests.js";
 
-export const create_driver = (user_input, evaluate, expectation) => {
+export const create_driver = (user_input, operator, expectation) => {
   const input_generator = make_input_generator(append(user_input, list(null)));
 
   const driver_loop = (env, accumulative_output) => {
@@ -14,7 +14,7 @@ export const create_driver = (user_input, evaluate, expectation) => {
       return accumulative_output;
     }
 
-    const { output, env: new_env } = execute(input, env, evaluate);
+    const { output, env: new_env } = execute(input, env, operator);
     user_print(output_prompt, output);
     
     return driver_loop(new_env, append(accumulative_output, list(output)));
@@ -23,13 +23,13 @@ export const create_driver = (user_input, evaluate, expectation) => {
   return driver_loop;
 }
   
-const execute = (input, env, evaluate) => {
+const execute = (input, env, operator) => {
   const program = parse(input);
   const locals = scan_out_declarations(program);
   const unassigneds = list_of_unassigned(locals);
   env = extend_environment(locals, unassigneds, env);
   
-  const output = evaluate(program, env);
+  const output = operator.evaluate(program, env);
 
   return { output, env }
 }
