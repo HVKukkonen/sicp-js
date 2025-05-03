@@ -1,5 +1,5 @@
 import { head, length, tail, pair, error, math_abs, math_PI, math_E, parse, is_null, display, append, stringify, map, accumulate, list_ref, is_pair, list } from "sicp";
-import { extend_environment, getTag, scan_out_declarations, list_of_unassigned } from "./eval_utils.js";
+import { extend_environment, scan_out_declarations, list_of_unassigned, is_tagged_list } from "./eval_utils.js";
 import { assert } from "../utils/tests.js";
 
 export const create_driver = (user_input, operator, expectation) => {
@@ -113,9 +113,9 @@ function user_print(prompt_string, content) {
 }
 
 function to_string(component) {
-  return is_pair(component) && getTag(component) === "compound_function"
+  return is_tagged_list(component, "compound_function")
          ? "<compound-function>"
-         : is_pair(component) && getTag(component) === "primitive"
+         : is_tagged_list(component, "primitive")
          ? "<primitive-function>"
          : is_pair(component)
          ? "[" + to_string(head(component)) + ", "

@@ -9,10 +9,17 @@ import {
   set_head,
   is_boolean,
   list_ref,
-  is_pair,
 } from "sicp";
 import { create_driver, setup_environment } from "./driver_loop.js";
-import { getTag, declaration_symbol, extend_environment, sequence_statements, symbol_of_name, scan_out_declarations, list_of_unassigned } from "./eval_utils.js";
+import { getTag,
+  declaration_symbol,
+  extend_environment, 
+  sequence_statements,
+  symbol_of_name,
+  scan_out_declarations,
+  list_of_unassigned,
+  is_tagged_list
+} from "./eval_utils.js";
 import { unparse } from "./4.2.js";
 
 const main = () => {
@@ -333,13 +340,11 @@ const evaluate_sequence = (evaluate) => (stmts, env) => {
 
 const is_last = (statements) => is_null(tail(statements));
 
-const is_return = (statement) => is_pair(statement) && (getTag(statement) === "return_statement" || is_return_value(statement));
+const is_return = (statement) => is_tagged_list(statement, "return_statement") || is_return_value(statement);
+
+export const is_return_value = (value) => is_tagged_list(value, "return_value");
 
 export const make_return_value = (content) => list("return_value", content);
-
-export const is_return_value = (value) => {
-  return is_pair(value) && getTag(value) === "return_value";
-};
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   main();

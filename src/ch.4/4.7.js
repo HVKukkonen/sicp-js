@@ -7,7 +7,7 @@ import { assert } from "../utils/tests.js";
 import { create_operator, is_return_value, make_return_value } from "./4.3.js";
 import { create_driver, setup_environment } from "./driver_loop.js";
 import { unparse } from "./4.2.js";
-import { getTag } from "./eval_utils.js";
+import { getTag, is_tagged_list } from "./eval_utils.js";
 
 // reference implementation
 const reference_factorial = (n) => {
@@ -55,14 +55,6 @@ const while_by_function = (evaluate) => (component, env) => {
   return while_loop(predicate, block);
 };
 
-const is_break = (value) => {
-  return is_pair(value) && getTag(value) === "break";
-}
-
-const is_continue = (value) => {
-  return is_pair(value) && getTag(value) === "continue";
-}
-
 export const direct_while = (evaluate) => (component, env) => {
   const predicate = evaluate(list_ref(component, 1), env);
 
@@ -72,11 +64,11 @@ export const direct_while = (evaluate) => (component, env) => {
     if (is_return_value(block)) {
       const return_value = list_ref(block, 1);
 
-      if (is_continue(return_value)) {
+      if (is_tagged_list(return_value, "continue")) {
         return evaluate(component, env);
       }
 
-      if (!is_break(return_value)) {
+      if (!is_tagged_list(return_value, "break")) {
         return block;
       }
     } else {
@@ -88,8 +80,6 @@ export const direct_while = (evaluate) => (component, env) => {
 const implement_tag = (tag) => (evaluate) => (component, env) => make_return_value(list(tag));
 export const break_implementation = implement_tag('break');
 export const continue_implementation = implement_tag('continue');
-
-
 
 const add_implementations = (implementations) => {
   const operator = create_operator();

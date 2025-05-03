@@ -1,4 +1,4 @@
-import { error, stringify, length, pair, head, tail, map, append, list, accumulate } from "sicp";
+import { error, stringify, length, pair, head, tail, map, append, list, accumulate, is_pair } from "sicp";
 import { elem_at_i } from "../utils/lists.js";
 
 export function extend_environment(symbols, vals, base_env) {
@@ -63,3 +63,5 @@ export const declaration_symbol = (component) => {
 };
 
 export const symbol_of_name = (component) => elem_at_i(1, component);
+
+export const is_tagged_list = (component, the_tag) => is_pair(component) && head(component) === the_tag
