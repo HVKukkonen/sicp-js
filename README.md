@@ -30,5 +30,6 @@ Thus, **the solutions should not be considered as representing my personal codin
 |4.1    |4.2
 |       |4.3                      |Evaluator for JS written in JS
 |       |4.4
+|       |4.7                      |Evaluator extension for while loops.
 
 [**Internal note**] Interesting exercises for later: 3.3.4

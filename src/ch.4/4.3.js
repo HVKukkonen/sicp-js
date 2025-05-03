@@ -335,7 +335,7 @@ const is_last = (statements) => is_null(tail(statements));
 
 const is_return = (statement) => is_pair(statement) && (getTag(statement) === "return_statement" || is_return_value(statement));
 
-const make_return_value = (content) => list("return_value", content);
+export const make_return_value = (content) => list("return_value", content);
 
 export const is_return_value = (value) => {
   return is_pair(value) && getTag(value) === "return_value";
