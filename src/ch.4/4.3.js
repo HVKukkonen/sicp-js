@@ -337,7 +337,7 @@ const is_return = (statement) => is_pair(statement) && (getTag(statement) === "r
 
 const make_return_value = (content) => list("return_value", content);
 
-const is_return_value = (value) => {
+export const is_return_value = (value) => {
   return is_pair(value) && getTag(value) === "return_value";
 };
 
