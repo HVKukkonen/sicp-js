@@ -1,13 +1,14 @@
-// The exercise starts with a simpler while loop implementation; while_by_function.
+// The exercise extends the evaluator from 4.3.
+// It starts with a simpler while loop implementation; while_by_function.
 // Then the implementation called direct_while is introduced.
 // It adds support for break and continue statements.
 // There's tests showcasing the intended behaviour.
-import { display, is_pair, list, list_ref } from "sicp";
+import { display, list, list_ref } from "sicp";
 import { assert } from "../utils/tests.js";
 import { create_operator, is_return_value, make_return_value } from "./4.3.js";
 import { create_driver, setup_environment } from "./driver_loop.js";
 import { unparse } from "./4.2.js";
-import { getTag, is_tagged_list } from "./eval_utils.js";
+import { is_tagged_list } from "./eval_utils.js";
 
 // reference implementation
 const reference_factorial = (n) => {

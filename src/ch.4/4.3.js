@@ -23,6 +23,10 @@ import { getTag,
 import { unparse } from "./4.2.js";
 
 const main = () => {
+  test_evaluator(create_operator());
+}
+
+export const test_evaluator = (operator) => {
   const input = list(
     "1;",
     "const x = 42;",
@@ -38,9 +42,9 @@ const main = () => {
     'const p = (x) => { x = x * x; }; p(2);'
   );
   const expectation = list(1, undefined, 2, 3, 4, 5, 6, 7, undefined, true, 42, undefined);
-  const driver = create_driver(input, create_operator(), expectation);
+  const driver = create_driver(input, operator, expectation);
   driver(setup_environment(), list());
-}
+};
 
 export const create_operator = () => {
   const operator = new Operator();
@@ -58,7 +62,7 @@ export const create_operator = () => {
     evaluate_declaration(evaluate)(component, env)
   );
   operator.set("assignment", (evaluate) => (component, env) => {
-    const value = evaluate(assignment_value_expression(component), env);
+    const value = evaluate(list_ref(component, 2), env);
     assign_symbol_value(assignment_symbol(component), value, env);
     return value;
   });
@@ -263,9 +267,8 @@ const evaluate_declaration = (evaluate) => (component, env) => {
   return undefined;
 };
 
-const assignment_value_expression = (component) => list_ref(component, 2);
 
-const assignment_symbol = (component) => list_ref(list_ref(component, 1), 1);
+export const assignment_symbol = (component) => list_ref(list_ref(component, 1), 1);
 
 const lookup_symbol_value = (symbol, env) => {
   const env_loop = (env) => {
