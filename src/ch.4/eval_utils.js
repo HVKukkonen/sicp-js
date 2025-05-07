@@ -1,7 +1,7 @@
 import { error, stringify, length, pair, head, tail, map, append, list, accumulate, is_pair } from "sicp";
 import { elem_at_i } from "../utils/lists.js";
 
-export function extend_environment(symbols, vals, base_env) {
+export const create_extend_environment = (make_frame) => (symbols, vals, base_env) => {
   return length(symbols) === length(vals)
     ? pair(make_frame(symbols, vals), base_env)
     : length(symbols) < length(vals)
@@ -17,7 +17,11 @@ export function extend_environment(symbols, vals, base_env) {
         ", " +
         stringify(vals)
       );
-}
+    }
+
+export const make_frame = (symbols, values) => pair(symbols, values)
+
+export const extend_environment = create_extend_environment(make_frame);
 
 export const scan_out_declarations = (component) => {
   return getTag(component) === "sequence"
@@ -40,10 +44,6 @@ const is_declaration = (component) => {
 export const unassigned = "*unassigned*";
 export const list_of_unassigned = (symbols) => {
   return map((symbol) => unassigned, symbols);
-}
-
-const make_frame = (symbols, values) => {
-  return pair(symbols, values);
 }
 
 export const getTag = (component) => elem_at_i(0, component);

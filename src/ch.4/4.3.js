@@ -10,7 +10,7 @@ import {
   is_boolean,
   list_ref,
 } from "sicp";
-import { create_driver, setup_environment } from "./driver_loop.js";
+import { create_driver, setup_environment, execute } from "./driver_loop.js";
 import { getTag,
   declaration_symbol,
   extend_environment, 
@@ -18,15 +18,16 @@ import { getTag,
   symbol_of_name,
   scan_out_declarations,
   list_of_unassigned,
-  is_tagged_list
+  is_tagged_list,
+  make_frame
 } from "./eval_utils.js";
 import { unparse } from "./4.2.js";
 
 const main = () => {
-  test_evaluator(create_operator());
+  test_evaluator(create_operator(), execute, make_frame);
 }
 
-export const test_evaluator = (operator) => {
+export const test_evaluator = (operator, execute, make_frame) => {
   const input = list(
     "1;",
     "const x = 42;",
@@ -42,8 +43,8 @@ export const test_evaluator = (operator) => {
     'const p = (x) => { x = x * x; }; p(2);'
   );
   const expectation = list(1, undefined, 2, 3, 4, 5, 6, 7, undefined, true, 42, undefined);
-  const driver = create_driver(input, operator, expectation);
-  driver(setup_environment(), list());
+  const driver = create_driver(input, operator, expectation, execute);
+  driver(setup_environment(make_frame), list());
 };
 
 export const create_operator = () => {

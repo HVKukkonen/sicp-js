@@ -1,8 +1,8 @@
 import { head, length, tail, pair, error, math_abs, math_PI, math_E, parse, is_null, display, append, stringify, map, accumulate, list_ref, is_pair, list } from "sicp";
-import { extend_environment, scan_out_declarations, list_of_unassigned, is_tagged_list } from "./eval_utils.js";
+import { extend_environment, scan_out_declarations, list_of_unassigned, is_tagged_list, create_extend_environment } from "./eval_utils.js";
 import { assert } from "../utils/tests.js";
 
-export const create_driver = (user_input, operator, expectation) => {
+export const create_driver = (user_input, operator, expectation, execute) => {
   const input_generator = make_input_generator(append(user_input, list(null)));
 
   const driver_loop = (env, accumulative_output) => {
@@ -23,7 +23,7 @@ export const create_driver = (user_input, operator, expectation) => {
   return driver_loop;
 }
   
-const execute = (input, env, operator) => {
+export const execute = (input, env, operator) => {
   const program = parse(input);
   const locals = scan_out_declarations(program);
   const unassigneds = list_of_unassigned(locals);
@@ -48,13 +48,11 @@ const verify = (result, expectation) => {
 const output_prompt = "\nM-evaluate value:\n";
 const input_prompt = "\nM-evaluate input:\n";
 
-export const setup_environment = () => {
-  return extend_environment(
-    append(primitive_function_symbols, primitive_constant_symbols),
-    append(primitive_function_objects, primitive_constant_values),
-    null
-  );
-}
+export const setup_environment = (make_frame) => create_extend_environment(make_frame)(
+  append(primitive_function_symbols, primitive_constant_symbols),
+  append(primitive_function_objects, primitive_constant_values),
+  null
+)
 
 const primitive_functions = list(
   list("head", head),

@@ -4,7 +4,8 @@
 // Tests from 4.3 are reused to verify the correctness of the new implementation.
 import { is_null, tail, head, set_head, error, list_ref} from "sicp";
 import { create_operator, test_evaluator, assignment_symbol } from "./4.3.js";
-import { declaration_symbol, symbol_of_name } from "./eval_utils.js";
+import { declaration_symbol, symbol_of_name, make_frame } from "./eval_utils.js";
+import { execute } from "./driver_loop.js";
 
 const create_env_operator = (symbol, operate) => {
   const env_loop = (env) => {
@@ -71,7 +72,7 @@ const main = () => {
   operator.set("assignment", assignment);
   operator.set("name", name);
 
-  test_evaluator(operator);
+  test_evaluator(operator, execute, make_frame);
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
