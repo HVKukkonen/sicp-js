@@ -19,7 +19,8 @@ import { getTag,
   scan_out_declarations,
   list_of_unassigned,
   is_tagged_list,
-  make_frame
+  make_frame,
+  list_of_values
 } from "./eval_utils.js";
 import { unparse } from "./4.2.js";
 
@@ -183,10 +184,6 @@ const evaluate_block = (evaluate) => (component, env) => {
   return evaluate(body, extend_environment(locals, unassigneds, env));
 }
 
-const list_of_values = (evaluate) => (expressions, env) => {
-  return map((arg) => evaluate(arg, env), expressions);
-};
-
 const function_expression = (component) => list_ref(component, 1);
 
 const argument_expressions = (component) => list_ref(component, 2);
@@ -344,7 +341,7 @@ const evaluate_sequence = (evaluate) => (stmts, env) => {
 
 const is_last = (statements) => is_null(tail(statements));
 
-const is_return = (statement) => is_tagged_list(statement, "return_statement") || is_return_value(statement);
+export const is_return = (statement) => is_tagged_list(statement, "return_statement") || is_return_value(statement);
 
 export const is_return_value = (value) => is_tagged_list(value, "return_value");
 

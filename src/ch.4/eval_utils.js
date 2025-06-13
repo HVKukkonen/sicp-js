@@ -65,3 +65,7 @@ export const declaration_symbol = (component) => {
 export const symbol_of_name = (component) => elem_at_i(1, component);
 
 export const is_tagged_list = (component, the_tag) => is_pair(component) && head(component) === the_tag
+
+export const list_of_values = (evaluate) => (expressions, env) => {
+  return map((arg) => evaluate(arg, env), expressions);
+};
