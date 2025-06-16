@@ -1,3 +1,5 @@
+// NOTE The evaluator here is -- with small modifications -- the one provided
+// in the book.
 import {
   head,
   tail,
