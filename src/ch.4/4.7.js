@@ -6,9 +6,8 @@
 import { display, list, list_ref } from "sicp";
 import { assert } from "../utils/tests.js";
 import { create_operator, is_return_value, make_return_value } from "./4.3.js";
-import { create_driver, setup_environment } from "./driver_loop.js";
-import { unparse } from "./4.2.js";
-import { is_tagged_list } from "./eval_utils.js";
+import { create_driver, setup_environment, execute } from "./driver_loop.js";
+import { is_tagged_list, make_frame } from "./eval_utils.js";
 
 // reference implementation
 const reference_factorial = (n) => {
@@ -93,8 +92,8 @@ const add_implementations = (implementations) => {
 }
 
 const factorial_test = (program, operator) => {
-  const driver = create_driver(list(program, 'factorial(3);'), operator, list(undefined, reference_factorial(3)));
-  driver(setup_environment(), list());
+  const driver = create_driver(list(program, 'factorial(3);'), operator, list(undefined, reference_factorial(3)), execute);
+  driver(setup_environment(make_frame), list());
 }
 
 const main = () => {
@@ -193,8 +192,8 @@ const main = () => {
     };
   `
   
-  const driver = create_driver(list(half_counter, 'half_counter(4);'), advanced_operator, list(undefined, 2));
-  driver(setup_environment(), list());
+  const driver = create_driver(list(half_counter, 'half_counter(4);'), advanced_operator, list(undefined, 2), execute);
+  driver(setup_environment(make_frame), list());
 
   display('All tests passed!');
 }
