@@ -5,12 +5,12 @@
 // There's tests showcasing the intended behaviour.
 import { display, list, list_ref } from "sicp";
 import { assert } from "../utils/tests.js";
-import { create_operator, is_return_value, make_return_value } from "./4.3.js";
+import { create_operator } from "./4.3.js";
 import { create_driver, setup_environment, execute } from "./driver_loop.js";
 import { is_tagged_list, make_frame } from "./eval_utils.js";
 
 // reference implementation
-const reference_factorial = (n) => {
+export const reference_factorial = (n) => {
   let product = 1;
   let counter = 1;
 
@@ -61,7 +61,7 @@ export const direct_while = (evaluate) => (component, env) => {
   if (predicate) {
     const block = evaluate(list_ref(component, 2), env);
 
-    if (is_return_value(block)) {
+    if (is_tagged_list(block, "return_value")) {
       const return_value = list_ref(block, 1);
 
       if (is_tagged_list(return_value, "continue")) {
@@ -77,7 +77,7 @@ export const direct_while = (evaluate) => (component, env) => {
   }
 }
 
-const implement_tag = (tag) => (evaluate) => (component, env) => make_return_value(list(tag));
+const implement_tag = (tag) => (evaluate) => (component, env) => list("return_value", list(tag));
 export const break_implementation = implement_tag('break');
 export const continue_implementation = implement_tag('continue');
 
@@ -96,8 +96,22 @@ const factorial_test = (program, operator) => {
   driver(setup_environment(make_frame), list());
 }
 
+export const while_factorial = `
+  const factorial = (n) => {
+    let product = 1;
+    let counter = 1;
+
+    while (counter <= n) {
+      product = product * counter;
+      counter = counter + 1;
+    }
+
+    return product;
+  };
+`
+
 const main = () => {
-  // 1. test the while_loop function -----------------------------------
+  // 1. test the while_loop function by evaluating it against the common javascript implementation
   const test_set = [0, 1, 3];
 
   for (const n of test_set) {
@@ -108,21 +122,7 @@ const main = () => {
   display("while_loop passed validation!");
   display("Let's next test the while_loop based program.");
 
-  // 2. test the while_loop based program ------------------------------
-
-  const while_factorial = `
-    const factorial = (n) => {
-      let product = 1;
-      let counter = 1;
-
-      while (counter <= n) {
-        product = product * counter;
-        counter = counter + 1;
-      }
-
-      return product;
-    };
-  `
+  // 2. test the while_loop based program by evaluating it against our implementation
 
   const crude_operator = add_implementations([
     ['while_loop', while_by_function],

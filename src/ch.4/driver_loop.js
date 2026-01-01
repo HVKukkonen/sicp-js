@@ -1,17 +1,22 @@
-import { head, length, tail, pair, error, math_abs, math_PI, math_E, parse, is_null, display, append, stringify, map, accumulate, list_ref, is_pair, list } from "sicp";
-import { extend_environment, scan_out_declarations, list_of_unassigned, is_tagged_list, create_extend_environment } from "./eval_utils.js";
+import { head, length, tail, pair, error, math_abs, math_PI, math_E, parse, is_null, display, append, stringify, map, list_ref, is_pair, list } from "sicp";
+import { extend_environment, scan_out_declarations, is_tagged_list, create_extend_environment, list_of_unassigned } from "./eval_utils.js";
 import { assert } from "../utils/tests.js";
 
 export const create_driver = (user_input, operator, expectation, execute) =>
   create_combined_driver(user_input, expectation, (input, env) => execute(input, env, operator))
 
 export const create_combined_driver = (user_input, expectation, execute) => {
+  // the input generator enables building programs from subprograms ergonomically
   const input_generator = make_input_generator(append(user_input, list(null)));
 
+  // driver_loop maintains the execution environment
+  // an iteration of the loop is the manifestation of the processing
+  // of a user program analogous to a terminal command
   const driver_loop = (env, accumulative_output) => {
     const input = user_read(input_generator);
     if (is_null(input)) {
       display("Evaluator terminated");
+      // verification frees from the need to examine the program output manually
       verify(accumulative_output, expectation);
       display("Output passed verification!");
       return accumulative_output;
@@ -32,6 +37,8 @@ export const execute = (input, env, operator) => {
   const unassigneds = list_of_unassigned(locals);
   env = extend_environment(locals, unassigneds, env);
   
+  // initial call to start the evaluate-apply loop
+  // the loop is implemented in the operator's evaluate method
   const output = operator.evaluate(program, env);
 
   return { output, env }
