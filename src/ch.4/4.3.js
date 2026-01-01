@@ -25,10 +25,11 @@ import {
   assignment_symbol,
   get_lambda_symbols,
   make_function,
-  apply,
+  create_apply,
   function_decl_to_constant_decl,
   unary_operator_combination_to_application,
-  binary_operator_combination_to_application
+  binary_operator_combination_to_application,
+  is_return
 } from "./eval_utils.js";
 import { is_truthy } from "../utils/tests.js";
 
@@ -137,6 +138,8 @@ class Operator {
     return chosen_operation(component, env);
   };
 }
+
+const apply = (evaluate) => create_apply(evaluate, is_return);
 
 const evaluate_block = (evaluate) => (component, env) => {
   const body = list_ref(component, 1);

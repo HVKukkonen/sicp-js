@@ -132,24 +132,21 @@ export const get_lambda_symbols = (component) => map(symbol_of_name, list_ref(co
 
 export const make_function = (parameters, body, env) => list("compound_function", parameters, body, env);
 
-export const apply = (evaluate) => (fn, args) => {
+export const create_apply = (f, check_return) => (fn, args) => {
   if (getTag(fn) === "primitive") {
-    return apply_primitive_function(fn, args);
+    const primitive_implementation = list_ref(fn, 1);
+    return apply_in_underlying_javascript(primitive_implementation, args);
   }
 
   if (getTag(fn) === "compound_function") {
-    const body = list_ref(fn, 2);
     const params = list_ref(fn, 1);
     const env = list_ref(fn, 3);
-    const new_env = extend_environment(
-      params,
-      args,
-      env
-    );
+    const new_env = extend_environment(params, args, env);
 
-    const result = evaluate(body, new_env);
+    const body = list_ref(fn, 2);
+    const result = f(body, new_env);
 
-    if (is_return(result)) {
+    if (check_return(result)) {
       return list_ref(result, 1);
     }
 
@@ -160,10 +157,6 @@ export const apply = (evaluate) => (fn, args) => {
 };
 
 export const is_return = (statement) => is_tagged_list(statement, "return_statement") || is_tagged_list(statement, "return_value");
-
-const apply_primitive_function = (fn, args) => apply_in_underlying_javascript(
-  list_ref(fn, 1), args
-);
 
 export const function_decl_to_constant_decl = (component) => {
   const declaration_name = list_ref(component, 1);
