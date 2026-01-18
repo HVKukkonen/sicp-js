@@ -33,6 +33,7 @@ Thus, **the solutions should not be considered as representing my personal codin
 |       |4.7                      |Evaluator extension for while loops.
 |       |4.9*, 4.10, 4.12, 4.14   |*4.9 is in 4.10.js
 |       |4.15                     |The Halting Theorem
-|       |4.20                     |Evalutator with separate syntactic analysis step
+|       |4.20                     |Evaluator with separate syntactic analysis step
+|4.2    |4.23
 
 [**Internal note**] Interesting exercises for later: 3.3.4
